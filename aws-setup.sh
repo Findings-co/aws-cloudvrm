@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# run the following command to execute this script
+# wget -qO- https://raw.githubusercontent.com/Findings-co/aws-cloudvrm/refs/heads/main/aws-setup.sh | bash
+
 STACK_NAME="FindingsCloudVRM"
 TEMPLATE_FILE="/tmp/cloudvrm-iam-securityhub.yaml"
 REGION="us-east-1"
