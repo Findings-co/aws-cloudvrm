@@ -100,7 +100,7 @@ function monitor_installation() {
     echo "Waiting for stack creation to complete..."
     aws cloudformation wait stack-create-complete --stack-name "$STACK_NAME" --region "$REGION"
     echo "Fetching stack outputs..."
-    aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$REGION" --query "Stacks[0].Outputs" --output json | jq -r '.[] | select(.OutputKey == "SecretKey" or .OutputKey == "AccountID" or .OutputKey == "Region" or .OutputKey == "AccessKey") | "\u001b[32m" + .Description + ": \u001b[0m" + .OutputValue'
+    aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$REGION" --query "Stacks[0].Outputs" --output json | jq -r '.[] | select(.OutputKey == "SecretKey" or .OutputKey == "AccountID" or .OutputKey == "Region" or .OutputKey == "AccessKey" or .OutputKey == "RoleARN") | "\u001b[32m" + .Description + ": \u001b[0m" + .OutputValue'
 }
 
 function monitor_uninstallation() {
