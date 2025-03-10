@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# wget -qO- https://raw.githubusercontent.com/Findings-co/aws-cloudvrm/refs/heads/main/aws-setup.sh | bash
+
 set -euo pipefail
 
 # Check for required dependencies.
