@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# run the following command to execute this script
 # wget -qO- https://raw.githubusercontent.com/Findings-co/aws-cloudvrm/refs/heads/main/aws-setup.sh | bash
 
 set -euo pipefail
