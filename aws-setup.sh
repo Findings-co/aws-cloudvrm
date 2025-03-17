@@ -3,14 +3,13 @@
 # run the following command to execute this script
 # wget -qO- https://raw.githubusercontent.com/Findings-co/aws-cloudvrm/refs/heads/main/aws-setup.sh | bash
 
-set -euo pipefail
-
 # Check for required dependencies.
 command -v aws >/dev/null || { echo "Error: AWS CLI is not installed."; exit 1; }
 command -v jq >/dev/null || { echo "Error: jq is not installed."; exit 1; }
 
-# Default values.
-STACK_NAME="FindingsCloudVRM"
+# Default values
+BASE_STACK_NAME="FindingsCloudVRM"
+STACK_NAME=""
 REGION="us-east-1"
 TEMPLATE_FILE="/tmp/cloudvrm-iam-securityhub.yaml"
 
@@ -21,13 +20,13 @@ PARAMS_PROVIDED=false
 function usage() {
     echo "Usage: $0 [options]"
     echo "Options:"
-    echo "  --stack-name STACK_NAME    Specify the CloudFormation stack name (default: FindingsCloudVRM)"
+    echo "  --stack-name STACK_NAME    Specify the CloudFormation stack name"    
     echo "  --region REGION            Specify the AWS region (default: us-east-1)"
-    echo "  --uninstall                Uninstall the specified stack"
+    echo "  --uninstall                Uninstall the specified stack (requires --stack-name)"    
     echo "  --help, -h                 Show this help message"
 }
 
-# Parse command line arguments.
+# Parse command line arguments
 while [[ $# -gt 0 ]]; do
     key="$1"
     case $key in
@@ -150,6 +149,10 @@ Outputs:
   SecretKey:
     Description: "Secret Key"
     Value: !GetAtt CFNUserAccessKey.SecretAccessKey
+
+  StackName:
+    Description: "Stack Name"
+    Value: !Ref AWS::StackName
 EOT
 }
 
@@ -163,7 +166,7 @@ function monitor_installation() {
     aws cloudformation wait stack-create-complete --stack-name "$STACK_NAME" --region "$REGION"
     echo "Fetching stack outputs..."
     aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$REGION" --query "Stacks[0].Outputs" --output json | \
-      jq -r '.[] | select(.OutputKey == "SecretKey" or .OutputKey == "AccountID" or .OutputKey == "Region" or .OutputKey == "AccessKey" or .OutputKey == "RoleARN") | "\u001b[32m" + .Description + ": \u001b[0m" + .OutputValue'
+      jq -r '.[] | select(.OutputKey == "SecretKey" or .OutputKey == "AccountID" or .OutputKey == "Region" or .OutputKey == "AccessKey" or .OutputKey == "RoleARN" or .OutputKey == "StackName") | "\u001b[32m" + .Description + ": \u001b[0m" + .OutputValue'
 }
 
 function monitor_uninstallation() {
@@ -173,6 +176,11 @@ function monitor_uninstallation() {
 }
 
 function install_stack() {
+    # Generate a unique stack name if not explicitly provided
+    if [[ -z "$STACK_NAME" ]]; then
+        STACK_NAME="${BASE_STACK_NAME}-$(tr -dc 'a-zA-Z' </dev/urandom | fold -w 5 | head -n 1)"
+    fi
+
     create_template_file
     echo "Installing CloudFormation stack '$STACK_NAME' in region '$REGION'..."
     aws cloudformation create-stack \
@@ -184,22 +192,24 @@ function install_stack() {
 }
 
 function uninstall_stack() {
+    if [[ -z "$STACK_NAME" ]]; then
+        echo "❌ ERROR: --uninstall requires --stack-name to specify which stack to remove."
+        usage
+        exit 1
+    fi
+
     echo "Uninstalling CloudFormation stack '$STACK_NAME' from region '$REGION'..."
     aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$REGION"
     monitor_uninstallation
 }
 
 # Main logic:
-# If no parameters were provided and the default stack exists in the default region, print available commands.
-if [[ "$PARAMS_PROVIDED" == false ]]; then
-    if check_stack_exists; then
-        echo "Default stack '$STACK_NAME' exists in region '$REGION'."
-        usage
-        exit 0
-    fi
-fi
-
 if [[ "$UNINSTALL" == true ]]; then
+    if [[ -z "$STACK_NAME" ]]; then
+        echo "❌ ERROR: --uninstall requires --stack-name to specify which stack to remove."
+        usage
+        exit 1
+    fi
     if check_stack_exists; then
         uninstall_stack
     else
