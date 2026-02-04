@@ -146,10 +146,6 @@ Outputs:
     Description: "Access Key"
     Value: !Ref CFNUserAccessKey
 
-  SecretKey:
-    Description: "Secret Key"
-    Value: !GetAtt CFNUserAccessKey.SecretAccessKey
-
   StackName:
     Description: "Stack Name"
     Value: !Ref AWS::StackName
@@ -176,6 +172,27 @@ function monitor_uninstallation() {
 }
 
 function install_stack() {
+    ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+
+    if [ -z "$ACCOUNT_ID" ]; then
+        echo "❌ ERROR: Could not retrieve AWS Account ID. Please check your AWS CLI credentials."
+        exit 1
+    fi
+    
+    CHECK_ASSUME=$(aws sts assume-role --role-arn "arn:aws:iam::$ACCOUNT_ID:role/SCP_CHECK_DUMMY" --role-session-name "TestSession" 2>&1)
+
+    if [[ $CHECK_ASSUME == *"AccessDenied"* ]] && [[ $CHECK_ASSUME == *"is not authorized to perform: sts:AssumeRole"* ]]; then
+        echo "----------------------------------------------------------------"
+        echo "⚠️  CRITICAL PERMISSION ERROR DETECTED"
+        echo "----------------------------------------------------------------"
+        echo "Your AWS Identity is blocked from assuming roles (sts:AssumeRole)."
+        echo "This is likely caused by an AWS Organization Service Control Policy (SCP)"
+        echo "or a Permissions Boundary. Standard IAM policies cannot override this."
+        echo ""
+        echo "Action required: Contact your AWS Admin to allow 'sts:AssumeRole'."
+        echo "----------------------------------------------------------------"
+    fi    
+    
     # Generate a unique stack name if not explicitly provided
     if [[ -z "$STACK_NAME" ]]; then
         STACK_NAME="${BASE_STACK_NAME}-$(tr -dc 'a-zA-Z' </dev/urandom | fold -w 5 | head -n 1)"
