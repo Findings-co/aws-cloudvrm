@@ -149,6 +149,10 @@ Outputs:
   StackName:
     Description: "Stack Name"
     Value: !Ref AWS::StackName
+
+  SecretKey:
+    Description: "Secret Key"
+    Value: !GetAtt CFNUserAccessKey.SecretAccessKey
 EOT
 }
 
